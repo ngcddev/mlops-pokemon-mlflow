@@ -5,8 +5,8 @@ en `ejemplos-api/`, con esos dos datos en el nombre, así que `challenger`
 y otro alias no se pisan.
 
     python src/ejemplo_api.py
-    python src/ejemplo_api.py --modelo credit-risk-modelo-final --alias challenger
-    python src/ejemplo_api.py --modelo credit-risk-agrupado --alias challenger
+    python src/ejemplo_api.py --modelo pokemon-type --alias challenger
+    python src/ejemplo_api.py --modelo pokemon-type-otro --alias challenger
 """
 
 from __future__ import annotations

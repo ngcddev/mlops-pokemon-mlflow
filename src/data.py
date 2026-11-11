@@ -1,15 +1,14 @@
-"""Cargar, limpiar y partir los datos del prototipo de crédito.
+"""Cargar, limpiar y partir los datos de Pokémon.
 
-Sigue `notebooks/01_exploracion.ipynb`:
-
+- elimina las columnas que no sirven como feature (`COLUMNS_TO_DROP`);
 - quita duplicados y filas incompletas;
-- deja edades entre 20 y 70 años, y no menores que la antigüedad laboral;
-- codifica las columnas de texto con `LabelEncoder`;
-- escala el resto de features con `StandardScaler`, sin tocar el objetivo;
+- codifica con `LabelEncoder` las columnas de `CATEGORICAS` (ninguna
+  por ahora: todas las features son numéricas);
+- escala las features con `StandardScaler`, sin tocar el objetivo;
 - parte entrenamiento y prueba con `TEST_SIZE` y `RANDOM_SEED`.
 
-El codificador y el escalador se ajustan con todo el conjunto limpio,
-igual que en el cuaderno, y después se hace la partición.
+El objetivo es `Type1`. El escalador se ajusta con todo el conjunto
+limpio y después se hace la partición.
 
 `registrar_preprocesamiento` deja en el run activo los conteos de cada
 filtro, el mapa de cada `LabelEncoder`, la media y la escala de
@@ -34,6 +33,7 @@ def _leer_csv() -> pd.DataFrame:
             "Revisa DATA_PATH en .env."
         )
     datos = pd.read_csv(config.DATA_PATH)
+    datos.columns = [c.strip() for c in datos.columns]
     faltan = [c for c in (config.TARGET, *config.CATEGORICAS) if c not in datos.columns]
     if faltan:
         raise ValueError(f"Faltan columnas en {config.DATA_PATH.name}: {faltan}")
@@ -47,6 +47,9 @@ def _limpiar(datos: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         "filas_leidas": int(len(datos)),
         "columnas_leidas": list(datos.columns),
     }
+    datos = datos.drop(columns=list(config.COLUMNS_TO_DROP))
+    resumen["columnas_eliminadas"] = list(config.COLUMNS_TO_DROP)
+
     n = len(datos)
     datos = datos.drop_duplicates()
     resumen["filas_duplicadas"] = int(n - len(datos))
@@ -54,22 +57,6 @@ def _limpiar(datos: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     n = len(datos)
     datos = datos.dropna()
     resumen["filas_incompletas"] = int(n - len(datos))
-
-    datos = datos.drop(columns=list(config.COLUMNS_TO_DROP))
-    resumen["columnas_eliminadas"] = list(config.COLUMNS_TO_DROP)
-
-    n = len(datos)
-    datos = datos[
-        (datos["person_age"] >= config.EDAD_MIN)
-        & (datos["person_age"] <= config.EDAD_MAX)
-    ]
-    resumen["filas_fuera_de_edad"] = int(n - len(datos))
-    resumen["edad_min"] = config.EDAD_MIN
-    resumen["edad_max"] = config.EDAD_MAX
-
-    n = len(datos)
-    datos = datos[datos["person_age"] >= datos["person_emp_length"]]
-    resumen["filas_edad_menor_que_empleo"] = int(n - len(datos))
 
     datos = datos.reset_index(drop=True)
     resumen["filas_limpias"] = int(len(datos))
@@ -83,7 +70,7 @@ def cargar_limpio() -> pd.DataFrame:
 
 
 def ajustar_preprocesador(datos: pd.DataFrame) -> dict:
-    """Ajusta el codificador y el escalador. No incluye `loan_status`."""
+    """Ajusta el codificador y el escalador. No incluye el objetivo (`Type1`)."""
     trabajo = datos.copy()
     encoders = {}
     for columna in config.CATEGORICAS:
@@ -153,12 +140,10 @@ def _transformaciones(preprocesador: dict) -> dict:
         "escalado_standard": escalado,
         "features": list(preprocesador["features"]),
         "pasos": [
+            f"eliminar columnas: {', '.join(config.COLUMNS_TO_DROP)}",
             "quitar duplicados",
             "quitar filas incompletas",
-            f"eliminar columnas: {', '.join(config.COLUMNS_TO_DROP)}",
-            f"edad entre {config.EDAD_MIN} y {config.EDAD_MAX}",
-            "edad mayor o igual que la antigüedad laboral",
-            "LabelEncoder en las columnas categóricas",
+            "LabelEncoder en las columnas categóricas (ninguna)",
             "StandardScaler en el resto de features, sin el objetivo",
             f"partición test_size={config.TEST_SIZE}, random_state={config.RANDOM_SEED}",
         ],
@@ -203,15 +188,11 @@ def registrar_preprocesamiento(material: dict) -> None:
             "filas_leidas": resumen["filas_leidas"],
             "filas_duplicadas": resumen["filas_duplicadas"],
             "filas_incompletas": resumen["filas_incompletas"],
-            "filas_fuera_de_edad": resumen["filas_fuera_de_edad"],
-            "filas_edad_menor_que_empleo": resumen["filas_edad_menor_que_empleo"],
             "filas_limpias": resumen["filas_limpias"],
             "filas_train": material["filas_train"],
             "filas_test": material["filas_test"],
-            "edad_min": resumen["edad_min"],
-            "edad_max": resumen["edad_max"],
             "columnas_eliminadas": ",".join(resumen["columnas_eliminadas"]),
-            "columnas_categoricas": ",".join(config.CATEGORICAS),
+            "columnas_categoricas": ",".join(config.CATEGORICAS) or "ninguna",
         }
     )
     mlflow.log_dict(

@@ -3,9 +3,8 @@
 `src/` lee estos valores desde aquí. Salen de `.env`; si falta el
 archivo, se usan los de `.env.example`.
 
-El objetivo, la partición y la métrica salen del prototipo de
-`notebooks/01_exploracion.ipynb`: clasificar `loan_status` y elegir
-el run con mayor accuracy.
+Conjunto de Pokémon: se clasifica el tipo principal (`Type1`) a partir
+de las estadísticas base y se elige el run con mayor accuracy.
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ MLFLOW_MODEL_NAME = os.getenv("MLFLOW_MODEL_NAME", "ejemplo-modelo")
 MLFLOW_MODEL_ALIAS = os.getenv("MLFLOW_MODEL_ALIAS", "challenger")
 RANDOM_SEED = int(os.getenv("RANDOM_SEED", "42"))
 
-_ruta_datos = os.getenv("DATA_PATH", "data/credit_risk_dataset.csv")
+_ruta_datos = os.getenv("DATA_PATH", "data/pokemon.csv")
 DATA_PATH = (
     Path(_ruta_datos)
     if Path(_ruta_datos).is_absolute()
@@ -32,20 +31,20 @@ DATA_PATH = (
 )
 
 # Decisiones cerradas en el notebook. No se repiten en el resto de src/.
-TARGET = "loan_status"
+TARGET = "Type1"
 TEST_SIZE = 0.3
 METRIC = "accuracy"
-EDAD_MIN = 20
-EDAD_MAX = 70
-CATEGORICAS = (
-    "person_home_ownership",
-    "loan_intent",
-)
+# Todas las features son numéricas: no hay columnas para LabelEncoder.
+CATEGORICAS: tuple[str, ...] = ()
 
+# Identificadores, texto libre, `Total` (suma de las seis estadísticas) y
+# `Type2` (casi determina el tipo y tiene muchos vacíos).
 COLUMNS_TO_DROP = (
-    "cb_person_cred_hist_length",
-    "loan_grade",
-    "cb_person_default_on_file",
+    "ID",
+    "Name",
+    "Form",
+    "Type2",
+    "Total",
 )
 
 def activar_seguimiento():

@@ -51,8 +51,8 @@ def _datasets(x_train, y_train, x_test, y_test):
         )
 
     return (
-        conjunto(x_train, y_train, "credit_risk_train"),
-        conjunto(x_test, y_test, "credit_risk_test"),
+        conjunto(x_train, y_train, "pokemon_train"),
+        conjunto(x_test, y_test, "pokemon_test"),
     )
 
 

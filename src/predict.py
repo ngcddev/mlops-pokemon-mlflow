@@ -37,7 +37,7 @@ def predecir(datos: pd.DataFrame):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Predice loan_status con columnas ya codificadas y escaladas."
+        description="Predice el tipo (Type1) con columnas ya codificadas y escaladas."
     )
     parser.add_argument(
         "--input",

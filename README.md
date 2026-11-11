@@ -1,8 +1,8 @@
 # ejemplo-mlops
 
-Flujo con MLflow: limpiar el conjunto de crédito, entrenar cuatro clasificadores, registrar el de mayor accuracy con el alias `challenger` y servir ese clasificador. El artefacto `model` es solo el estimador. La API recibe las ocho columnas ya codificadas y escaladas. Los filtros, el mapa del `LabelEncoder` y la media y la escala quedan en el run `preprocesamiento`.
+Flujo con MLflow: limpiar el conjunto de Pokémon, entrenar cuatro clasificadores que predicen el tipo principal (`Type1`), registrar el de mayor accuracy con el alias `challenger` y servir ese clasificador. El artefacto `model` es solo el estimador. La API recibe las siete columnas numéricas (HP, Attack, Defense, Sp. Atk, Sp. Def, Speed, Generation) ya escaladas. Los filtros, el mapa del `LabelEncoder` y la media y la escala quedan en el run `preprocesamiento`.
 
-Los nombres del experimento, del modelo y del alias salen de `.env` (`MLFLOW_EXPERIMENT_NAME`, `MLFLOW_MODEL_NAME`, `MLFLOW_MODEL_ALIAS`). En esta copia son `credit-risk` y `challenger`.
+Los nombres del experimento, del modelo y del alias salen de `.env` (`MLFLOW_EXPERIMENT_NAME`, `MLFLOW_MODEL_NAME`, `MLFLOW_MODEL_ALIAS`). En esta copia son `pokemon-type` y `challenger`.
 
 ## Estructura
 
@@ -22,7 +22,7 @@ Los nombres del experimento, del modelo y del alias salen de `.env` (`MLFLOW_EXP
 │   ├── predict.py            # predecir con columnas ya transformadas
 │   └── ejemplo_api.py        # documento de petición y respuesta
 ├── ejemplos-api/             # generado: un Markdown por modelo y alias
-├── data/                     # credit_risk_dataset.csv, fuera de Git
+├── data/                     # pokemon.csv, fuera de Git
 ├── mlflow.db                 # generado: parámetros, métricas, versiones
 └── mlruns/                   # generado: modelos y artefactos
 ```
@@ -60,7 +60,7 @@ La interfaz queda en http://127.0.0.1:5000. Lee `sqlite:///mlflow.db` y los arch
 
 ## Entrenar
 
-`DATA_PATH` apunta a `data/credit_risk_dataset.csv`. `src/train.py` abre un run `preprocesamiento` y, después, un run por clasificador: regresión logística, SVM, árbol de decisión y random forest. Cada uno guarda accuracy, parámetros y el estimador.
+`DATA_PATH` apunta a `data/pokemon.csv`. `src/train.py` abre un run `preprocesamiento` y, después, un run por clasificador: regresión logística, SVM, árbol de decisión y random forest. Cada uno guarda accuracy, parámetros y el estimador.
 
 ```bash
 set -a && source .env && set +a
@@ -77,15 +77,15 @@ mlflow run . --env-manager local
 mlflow run . -e register --env-manager local
 ```
 
-Predicción y servicio usan `models:/credit-risk@challenger`, no un número de versión fijo.
+Predicción y servicio usan `models:/pokemon-type@challenger`, no un número de versión fijo.
 
 ## Servir el modelo
 
-`mlflow models serve` expone el clasificador. La petición lleva una fila ya codificada y escalada. Una fila produce una sola clase, `[0]` o `[1]`.
+`mlflow models serve` expone el clasificador. La petición lleva una fila ya escalada. Una fila produce un solo tipo, por ejemplo `["Water"]`.
 
 ```bash
 mlflow --env-file .env models serve \
-  -m "models:/credit-risk@challenger" \
+  -m "models:/pokemon-type@challenger" \
   --port 5001 \
   --env-manager local
 ```
@@ -93,21 +93,21 @@ mlflow --env-file .env models serve \
 El servicio escucha en http://127.0.0.1:5001. Para regenerar el ejemplo de esa versión:
 
 ```bash
-python src/ejemplo_api.py --modelo credit-risk --alias challenger --puerto 5001
+python src/ejemplo_api.py --modelo pokemon-type --alias challenger --puerto 5001
 ```
 
-Eso escribe `ejemplos-api/credit-risk__challenger.md`. La petición de una fila es:
+Eso escribe `ejemplos-api/pokemon-type__challenger.md`. La petición de una fila es:
 
 ```bash
 curl http://127.0.0.1:5001/invocations \
   -H 'Content-Type: application/json' \
-  -d '{"dataframe_split": {"columns": ["person_age", "person_income", "person_home_ownership", "person_emp_length", "loan_intent", "loan_amnt", "loan_int_rate", "loan_percent_income"], "data": [[-0.44220311260130146, -0.12484565079562059, 3.0, -0.4415669058833856, 3.0, -1.0521712618466563, 0.7503988094474996, -1.1235941837207022]]}}'
+  -d '{"dataframe_split": {"columns": ["HP", "Attack", "Defense", "Sp. Atk", "Sp. Def", "Speed", "Generation"], "data": [[0.5441593383904934, -0.4103211105494686, -0.09718827258877333, 1.0910994158848046, -0.23195776969853676, 1.2025799941540203, 0.38032817305836625]]}}'
 ```
 
 La respuesta tiene esta forma:
 
 ```json
-{"predictions": [1]}
+{"predictions": ["Water"]}
 ```
 
 `src/predict.py` hace lo mismo en local, sin levantar el servicio:
@@ -122,7 +122,7 @@ mlflow run . -e predict --env-manager local
 
 ```bash
 mlflow --env-file .env models build-docker \
-  -m "models:/credit-risk@challenger" \
+  -m "models:/pokemon-type@challenger" \
   -n "tu_usuario_dockerhub/mi-modelo-challenger:latest"
 ```
 
@@ -137,7 +137,7 @@ La misma fila, contra el contenedor:
 ```bash
 curl http://127.0.0.1:5002/invocations \
   -H 'Content-Type: application/json' \
-  -d '{"dataframe_split": {"columns": ["person_age", "person_income", "person_home_ownership", "person_emp_length", "loan_intent", "loan_amnt", "loan_int_rate", "loan_percent_income"], "data": [[-0.44220311260130146, -0.12484565079562059, 3.0, -0.4415669058833856, 3.0, -1.0521712618466563, 0.7503988094474996, -1.1235941837207022]]}}'
+  -d '{"dataframe_split": {"columns": ["HP", "Attack", "Defense", "Sp. Atk", "Sp. Def", "Speed", "Generation"], "data": [[0.5441593383904934, -0.4103211105494686, -0.09718827258877333, 1.0910994158848046, -0.23195776969853676, 1.2025799941540203, 0.38032817305836625]]}}'
 ```
 
 `--rm` borra el contenedor al detenerlo con Ctrl+C.
@@ -148,7 +148,7 @@ curl http://127.0.0.1:5002/invocations \
 docker login
 
 mlflow --env-file .env models build-docker \
-  -m "models:/credit-risk@challenger" \
+  -m "models:/pokemon-type@challenger" \
   -n "tu_usuario_dockerhub/mi-modelo-challenger:latest"
 
 docker push tu_usuario_dockerhub/mi-modelo-challenger:latest
@@ -158,7 +158,7 @@ Sustituye `tu_usuario_dockerhub` por el usuario de Docker Hub. Si la imagen ya s
 
 ## Datos
 
-`data/` guarda el conjunto de trabajo. `DATA_PATH` es `data/credit_risk_dataset.csv` y ese archivo no se sube a Git. La política está en `data/README.md`.
+`data/` guarda el conjunto de trabajo. `DATA_PATH` es `data/pokemon.csv` y ese archivo no se sube a Git. La política está en `data/README.md`.
 
 ## Qué no se versiona
 
